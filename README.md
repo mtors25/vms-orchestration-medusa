@@ -47,7 +47,7 @@ Medusa follows a multi-stage process to prepare and deploy virtual machines acco
 
 ### 🚀 Project Purpose
 
-This project was built to simplify and streamline VM orchestration workflows in complex environments.
+This project was built to simplify and streamline VM orchestration workflows in OpenShift/Kubernetes/KubeVirt environments.
 
 Feel free to use, modify, and adapt it to your needs.
 
