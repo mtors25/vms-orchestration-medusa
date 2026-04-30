@@ -1,0 +1,253 @@
+ kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: windows11-desktop-large
+  namespace: openshift  
+  labels:
+    app.kubernetes.io/managed-by: ssp-operator
+    app.kubernetes.io/name: custom-templates
+    app.kubernetes.io/part-of: hyperconverged-cluster
+    flavor.template.kubevirt.io/large: 'true'
+    os.template.kubevirt.io/win11: 'true'
+    template.kubevirt.io/architecture: amd64
+    template.kubevirt.io/type: vm
+  annotations:
+    description: Windows 11 Pro Desktop. Clones Super ISO from source namespace to target namespace.
+    iconClass: icon-windows
+    openshift.io/display-name: Microsoft Windows 11 Desktop Large
+    template.kubevirt.io/provider: Marco Torres  
+objects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: 'sysprep-${NAME}'
+      namespace: '${TARGET_NAMESPACE}'
+    data:
+      autounattend.xml: |-
+        <?xml version="1.0" encoding="utf-8"?>
+        <unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+          <settings pass="windowsPE">
+            <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+              <SetupUILanguage><UILanguage>en-US</UILanguage></SetupUILanguage>
+              <InputLocale>en-US</InputLocale><SystemLocale>en-US</SystemLocale><UILanguage>en-US</UILanguage><UserLocale>en-US</UserLocale>
+            </component>
+            <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+              <DiskConfiguration>
+                <WillShowUI>Never</WillShowUI>
+                <Disk wcm:action="add">
+                  <DiskID>0</DiskID><WillWipeDisk>true</WillWipeDisk>
+                  <CreatePartitions>
+                    <CreatePartition wcm:action="add"><Order>1</Order><Type>EFI</Type><Size>100</Size></CreatePartition>
+                    <CreatePartition wcm:action="add"><Order>2</Order><Type>MSR</Type><Size>16</Size></CreatePartition>
+                    <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type><Size>4096</Size></CreatePartition>
+                    <CreatePartition wcm:action="add"><Order>4</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition>
+                  </CreatePartitions>
+                  <ModifyPartitions>
+                    <ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Format>FAT32</Format><Label>System</Label></ModifyPartition>
+                    <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>3</PartitionID><Format>NTFS</Format><Label>Recovery</Label><TypeID>de94bba4-06d1-4d40-a16a-bfd50179d6ac</TypeID></ModifyPartition>
+                    <ModifyPartition wcm:action="add"><Order>3</Order><PartitionID>4</PartitionID><Format>NTFS</Format><Label>Windows</Label></ModifyPartition>
+                  </ModifyPartitions>
+                </Disk>
+              </DiskConfiguration>
+              <RunSynchronous>
+                <RunSynchronousCommand wcm:action="add">
+                  <Order>1</Order>
+                  <Path>reg add HKLM\System\Setup\LabConfig /v BypassTPMCheck /t REG_DWORD /d 1 /f</Path>
+                </RunSynchronousCommand>
+                <RunSynchronousCommand wcm:action="add">
+                  <Order>2</Order>
+                  <Path>reg add HKLM\System\Setup\LabConfig /v BypassSecureBootCheck /t REG_DWORD /d 1 /f</Path>
+                </RunSynchronousCommand>
+              </RunSynchronous>
+              <ImageInstall><OSImage>
+                <InstallFrom><MetaData wcm:action="add"><Key>/IMAGE/INDEX</Key><Value>1</Value></MetaData></InstallFrom>
+                <InstallTo><DiskID>0</DiskID><PartitionID>4</PartitionID></InstallTo>
+                <WillShowUI>Never</WillShowUI>
+              </OSImage></ImageInstall>
+              <UserData><AcceptEula>true</AcceptEula><FullName>User</FullName></UserData>
+            </component>
+          </settings>
+
+          <settings pass="specialize">
+            <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+              <ComputerName>${NAME}</ComputerName>
+              <TimeZone>Mountain Standard Time</TimeZone>
+            </component>
+          </settings>
+
+          <settings pass="oobeSystem">
+            <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+              <AutoLogon>
+                <Password><Value>${ADMIN_PASSWORD}</Value><PlainText>true</PlainText></Password>
+                <Enabled>true</Enabled><LogonCount>1</LogonCount><Username>${USER_NAME}</Username>
+              </AutoLogon>
+              <UserAccounts>
+                <LocalAccounts>
+                  <LocalAccount wcm:action="add">
+                    <Password><Value>${ADMIN_PASSWORD}</Value><PlainText>true</PlainText></Password>
+                    <DisplayName>${USER_NAME}</DisplayName><Group>Administrators</Group><Name>${USER_NAME}</Name>
+                  </LocalAccount>
+                </LocalAccounts>
+              </UserAccounts>
+              <OOBE>
+                <HideEULAPage>true</HideEULAPage><HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+                <ProtectYourPC>3</ProtectYourPC><SkipMachineOOBE>true</SkipMachineOOBE><SkipUserOOBE>true</SkipUserOOBE>
+              </OOBE>
+              <FirstLogonCommands>
+              
+                <SynchronousCommand wcm:action="add">
+                  <Order>1</Order>    
+                  <CommandLine>powershell -ExecutionPolicy Bypass -File "D:\deployment\initial-configuration.ps1" -IP_ADDRESS "${IP_ADDRESS}" -PREFIX ${PREFIX} -GATEWAY "${GATEWAY}" -DNS_SERVER "${DNS_SERVER}" -USER_NAME "${USER_NAME}" -SSH_PUBLIC_KEY "${SSH_PUBLIC_KEY}"</CommandLine>
+                </SynchronousCommand>
+
+              </FirstLogonCommands>
+            </component>
+          </settings>
+        </unattend>
+  - apiVersion: kubevirt.io/v1
+    kind: VirtualMachine
+    metadata:
+      name: '${NAME}'
+      namespace: '${TARGET_NAMESPACE}'
+      labels:
+        app: '${NAME}'
+        vm.kubevirt.io/template: windows11-desktop-large-lcps
+    spec:
+      dataVolumeTemplates:
+        - metadata:
+            name: '${NAME}-rootdisk'
+          spec:
+            source:
+              blank: {}
+            storage:
+              resources:
+                requests:
+                  storage: 200Gi
+              accessModes:
+                - ReadWriteOnce
+              volumeMode: Block
+              storageClassName: lvms-pure
+        - metadata:
+            name: '${NAME}-iso-clone'
+          spec:
+            source:
+              pvc:
+                name: '${DATA_SOURCE_NAME}'
+                namespace: '${DATA_SOURCE_NAMESPACE}'
+            storage:
+              resources:
+                requests:
+                  storage: 10Gi
+              accessModes:
+                - ReadWriteOnce
+              volumeMode: Block
+              storageClassName: lvms-pure
+      runStrategy: Halted
+      template:
+        spec:
+          domain:
+            cpu:
+              cores: 2
+              sockets: 1
+              threads: 2
+              dedicatedCpuPlacement: true
+            memory:
+              guest: 8Gi
+              hugepages:
+                pageSize: 1Gi
+            features:
+              smm:
+                enabled: true
+              hyperv:
+                relaxed: {}
+                vapic: {}
+                spinlocks:
+                  spinlocks: 8191
+            firmware:
+              bootloader:
+                efi:
+                  persistent: true
+                  secureBoot: true
+            devices:
+              tpm:
+                persistent: true
+              disks:
+                - disk:
+                    bus: virtio
+                  bootOrder: 1
+                  name: rootdisk
+                - cdrom:
+                    bus: sata
+                  bootOrder: 2
+                  name: install-media
+                - cdrom:
+                    bus: sata
+                  name: sysprep
+              interfaces:
+                - model: virtio
+                  name: default
+                  bridge: {}
+              inputs:
+                - bus: usb
+                  type: tablet
+          networks:
+            - name: default
+              multus:
+                networkName: default/vlan-69
+          volumes:
+            - dataVolume:
+                name: '${NAME}-rootdisk'
+              name: rootdisk
+            - dataVolume:
+                name: '${NAME}-iso-clone'
+              name: install-media
+            - name: sysprep
+              sysprep:
+                configMap:
+                  name: 'sysprep-${NAME}'
+          resources:
+            requests:
+              cpu: 4
+              memory: 1Gi
+              hugepages-1Gi: 8Gi
+            limits:
+              cpu: 4
+              memory: 1Gi
+              hugepages-1Gi: 8Gi
+parameters:
+  - name: NAME
+    description: VM name and Windows Hostname (Keep under 15 chars)
+    generate: expression
+    from: 'win11-[a-z0-9]{11}'
+    required: true
+  - name: TARGET_NAMESPACE
+    description: Namespace destination for the VM
+    required: true
+  - name: USER_NAME
+    description: The custom local user to create
+    value: adminuser
+    required: true
+  - name: ADMIN_PASSWORD
+    description: Password for Administrator and custom user
+    required: true
+  - name: IP_ADDRESS
+    description: 'Static IP for the VM (e.g., x.x.x.x)'
+    required: true
+  - name: PREFIX
+    description: 'Subnet prefix length (e.g., 24)'
+    required: true
+  - name: GATEWAY
+    description: Default gateway IP
+    required: true
+  - name: DNS_SERVER
+    description: DNS server IP
+    required: true
+  - name: SSH_PUBLIC_KEY
+    description: The Ed25519 Public Key string for SSH access
+    required: true
+  - name: DATA_SOURCE_NAME
+    description: Name of the PVC containing your Super ISO
+    required: true
+  - name: DATA_SOURCE_NAMESPACE
+    description: Namespace where the Super ISO PVC resides
+    required: true 
