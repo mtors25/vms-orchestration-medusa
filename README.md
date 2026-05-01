@@ -29,7 +29,6 @@ Medusa follows a multi-stage process to prepare and deploy virtual machines acco
 * OS version selection
 * Language settings
 * Network configuration and hostname assignment
-* Timezone and NTP setup
 * Installation and configuration of:
 
   * QEMU Guest Agent
