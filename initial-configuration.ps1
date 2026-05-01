@@ -161,7 +161,7 @@ if (!(Test-Path $securityPath)) { New-Item -Path $securityPath -Force }
 
 
 New-ItemProperty -Path $sessionPath -Name "create-session" -Value 0 -PropertyType DWord -Force -ErrorAction Ignore
-New-ItemProperty -Path $securityPath -Name "auth-token-verifier" -Value "https://poseidon02.lcps.net/rest/dcv_auth" -PropertyType String -Force -ErrorAction Ignore
+New-ItemProperty -Path $securityPath -Name "auth-token-verifier" -Value "https://poseidon.xxx.xxx/rest/dcv_auth" -PropertyType String -Force -ErrorAction Ignore
 New-ItemProperty -Path $securityPath -Name "no-tls-strict" -Value 1 -PropertyType DWord -Force -ErrorAction Ignore
 
 
@@ -170,7 +170,7 @@ Get-WindowsUpdate -MicrosoftUpdate
 Install-WindowsUpdate -AcceptAll -AutoReboot 
 
 
-$ppkg = "$($d):\deployment\lcps-vdi-labs.ppkg"
+$ppkg = "$($d):\deployment\vdi-labs.ppkg"
 if ($d -and (Test-Path $ppkg)) {
     Write-Host "Applying Provisioning Package..."
     Install-ProvisioningPackage -PackagePath $ppkg -QuietInstall -ErrorAction  Stop
